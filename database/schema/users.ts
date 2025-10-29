@@ -18,6 +18,7 @@ export const Users = pgTable("users", {
   avatar: text("avatar"),
   password: varchar("password", { length: 255 }),
   emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: varchar("email_verification_token", { length: 255 }).unique(),
   lastLoginAt: timestamp("last_login_at"),
 });
 

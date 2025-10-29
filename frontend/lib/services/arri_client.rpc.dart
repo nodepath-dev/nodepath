@@ -95,6 +95,20 @@ class ArriClientAuthService {
       timeout: _timeout,
     );
   }
+
+  Future<VerifyEmailResponse> verifyemail(VerifyEmailParams params) async {
+    return parsedArriRequest(
+      "$_baseUrl/auth/verifyemail",
+      method: HttpMethod.post,
+      httpClient: _httpClient,
+      headers: _headers,
+      clientVersion: _clientVersion,
+      params: params.toJson(),
+      parser: (body) => VerifyEmailResponse.fromJsonString(body),
+      onError: _onError,
+      timeout: _timeout,
+    );
+  }
 }
 
 class ArriClientFlowsService {
@@ -507,6 +521,128 @@ class RegisterUserResponse implements ArriModel {
   @override
   String toString() {
     return "RegisterUserResponse ${toJsonString()}";
+  }
+}
+
+class VerifyEmailParams implements ArriModel {
+  final String token;
+  const VerifyEmailParams({required this.token});
+
+  factory VerifyEmailParams.empty() {
+    return VerifyEmailParams(token: "");
+  }
+
+  factory VerifyEmailParams.fromJson(Map<String, dynamic> _input_) {
+    final token = typeFromDynamic<String>(_input_["token"], "");
+    return VerifyEmailParams(token: token);
+  }
+
+  factory VerifyEmailParams.fromJsonString(String input) {
+    return VerifyEmailParams.fromJson(json.decode(input));
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final _output_ = <String, dynamic>{"token": token};
+
+    return _output_;
+  }
+
+  @override
+  String toJsonString() {
+    return json.encode(toJson());
+  }
+
+  @override
+  String toUrlQueryParams() {
+    final _queryParts_ = <String>[];
+    _queryParts_.add("token=$token");
+    return _queryParts_.join("&");
+  }
+
+  @override
+  VerifyEmailParams copyWith({String? token}) {
+    return VerifyEmailParams(token: token ?? this.token);
+  }
+
+  @override
+  List<Object?> get props => [token];
+
+  @override
+  bool operator ==(Object other) {
+    return other is VerifyEmailParams && listsAreEqual(props, other.props);
+  }
+
+  @override
+  int get hashCode => listToHashCode(props);
+
+  @override
+  String toString() {
+    return "VerifyEmailParams ${toJsonString()}";
+  }
+}
+
+class VerifyEmailResponse implements ArriModel {
+  final bool success;
+  final String message;
+  const VerifyEmailResponse({required this.success, required this.message});
+
+  factory VerifyEmailResponse.empty() {
+    return VerifyEmailResponse(success: false, message: "");
+  }
+
+  factory VerifyEmailResponse.fromJson(Map<String, dynamic> _input_) {
+    final success = typeFromDynamic<bool>(_input_["success"], false);
+    final message = typeFromDynamic<String>(_input_["message"], "");
+    return VerifyEmailResponse(success: success, message: message);
+  }
+
+  factory VerifyEmailResponse.fromJsonString(String input) {
+    return VerifyEmailResponse.fromJson(json.decode(input));
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final _output_ = <String, dynamic>{"success": success, "message": message};
+
+    return _output_;
+  }
+
+  @override
+  String toJsonString() {
+    return json.encode(toJson());
+  }
+
+  @override
+  String toUrlQueryParams() {
+    final _queryParts_ = <String>[];
+    _queryParts_.add("success=$success");
+    _queryParts_.add("message=$message");
+    return _queryParts_.join("&");
+  }
+
+  @override
+  VerifyEmailResponse copyWith({bool? success, String? message}) {
+    return VerifyEmailResponse(
+      success: success ?? this.success,
+      message: message ?? this.message,
+    );
+  }
+
+  @override
+  List<Object?> get props => [success, message];
+
+  @override
+  bool operator ==(Object other) {
+    return other is VerifyEmailResponse && listsAreEqual(props, other.props);
+  }
+
+  @override
+  int get hashCode => listToHashCode(props);
+
+  @override
+  String toString() {
+    return "VerifyEmailResponse ${toJsonString()}";
   }
 }
 

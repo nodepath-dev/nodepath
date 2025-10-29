@@ -11,47 +11,51 @@ class AddFlow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final FlowsController controller = Get.find<FlowsController>();
-    
+
     return Container(
-        margin: EdgeInsets.only(top: 10, right: 10),
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        width: 200,
-        decoration: BoxDecoration(color: Pallet.inside1, borderRadius: BorderRadius.circular(10)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // SizedBox(height: 10),
-            Button(
-              label: "Add Terminal",
-              onPress: () {
-                controller.addFlow(FlowType.terminal);
-              },
-            ),
-            SizedBox(height: 10),
-            Button(
-              label: "Add Process",
-              onPress: () {
-                controller.addFlow(FlowType.process);
-              },
-            ),
-            SizedBox(height: 10),
-            Button(
-              label: "Add Condition",
-              onPress: () {
-                controller.addFlow(FlowType.condition);
-              },
-            ),
-            SizedBox(height: 10),
-            Button(
-              label: "Add Loop",
-              onPress: () {
-                controller.startLoopSelection();
-              },
-            ),
-            // SizedBox(height: 10),
-          ],
-        ));
+      margin: EdgeInsets.only(top: 10, right: 10),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+      width: 180,
+      decoration: BoxDecoration(
+        color: Pallet.inside2,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SizedBox(height: 10),
+          Button(
+            label: "Add Terminal",
+            onPress: () {
+              controller.addFlow(FlowType.terminal);
+            },
+          ),
+          SizedBox(height: 12),
+          Button(
+            label: "Add Process",
+            onPress: () {
+              controller.addFlow(FlowType.process);
+            },
+          ),
+          SizedBox(height: 12),
+          Button(
+            label: "Add Condition",
+            onPress: () {
+              controller.addFlow(FlowType.condition);
+            },
+          ),
+          SizedBox(height: 12),
+          Button(
+            label: "Add Loop",
+            onPress: () {
+              controller.startLoopSelection();
+            },
+          ),
+          // SizedBox(height: 10),
+        ],
+      ),
+    );
   }
 }
 
@@ -63,23 +67,49 @@ class Button extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: (){
+      onTap: () {
         onPress();
       },
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: label.toLowerCase().contains("loop") ?  8:10, horizontal: 15),
+        padding: EdgeInsets.symmetric(
+          vertical: label.toLowerCase().contains("loop") ? 8 : 10,
+          horizontal: 15,
+        ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: Pallet.inside2,
+          borderRadius: BorderRadius.circular(20),
+          // color: Pallet.inside2.withOpacity(0.5),
+          color: Pallet.inside1.withOpacity(0.8),
+          //     borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Pallet.inside3.withOpacity(0.6), // shadow color
+              blurRadius: 2, // soften the shadow
+              spreadRadius: 1, // extend the shadow
+              offset: const Offset(2, 2), // (x, y) offset
+            ),
+          ],
         ),
         child: Row(
           children: [
-            // SizedBox(width: 5),
-            Expanded(
-                child: Text(
-              label,
-              style: TextStyle(fontSize: 12),
-            )),
+            // Container(
+            //   width: 20,
+            //   height: 20,
+            //   decoration: BoxDecoration(
+            //     color: Pallet.inside1,
+            //     borderRadius: BorderRadius.circular(20),
+            //     boxShadow: [
+            //       BoxShadow(
+            //         color: Colors.black.withOpacity(0.1), // shadow color
+            //         blurRadius: 2, // soften the shadow
+            //         spreadRadius: 1, // extend the shadow
+            //         offset: const Offset(2, 2), // (x, y) offset
+            //       ),
+            //     ],
+            //   ),
+            // child: Center(child:
+            // build_icon(),
+            //  ),
+            // ),
             if (label.toLowerCase().contains("condition"))
               Transform.rotate(
                 angle: 40,
@@ -87,40 +117,51 @@ class Button extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                      border: Border.all(color: Colors.yellow, width: 2.5)),
+                    border: Border.all(color: Colors.yellow, width: 2.5),
+                  ),
                 ),
               )
             else if (label.toLowerCase().contains("process"))
               Container(
-                width: 15,
-                height: 15,
-                decoration: BoxDecoration(border: Border.all(color: Colors.blue, width: 2.5)),
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.blue, width: 2.5),
+                  // color: Colors.blue,
+                ),
               )
             else if (label.toLowerCase().contains("terminal"))
               Container(
                 width: 15,
                 height: 15,
                 decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.red, width: 2.5)),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.red, width: 2.5),
+                ),
               )
             else
               SizedBox(
                 width: 18,
                 height: 18,
                 child: Icon(
-                  
                   Icons.loop,
                   // opticalSize: 5,
                   size: 20,
                   // weight: 6,
                   color: Colors.green,
                 ),
-              )
+              ),
+            SizedBox(width: 10),
+            Expanded(child: Text(label, style: TextStyle(fontSize: 12))),
           ],
         ),
       ),
     );
   }
+
+  // build_icon() {
+
+  // }
 }
 
 // class AddFlow extends StatelessWidget {

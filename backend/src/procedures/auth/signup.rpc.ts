@@ -1,15 +1,21 @@
 import { a } from "@arrirpc/schema";
 import { defineRpc } from "@arrirpc/server";
-import { getDrizzle } from "../../../../database/postgres";
-import { Users } from "../../../../database/schema/users";
+import { getDrizzle } from "@database/postgres";
+import { Users } from "@database/schema/users";
 import { eq } from "drizzle-orm";
-import { hashPassword, isValidEmail, validatePassword } from "./utils";
+import { hashPassword, isValidEmail, validatePassword, sendVerificationEmail } from "./utils";
+import crypto from "crypto";
 
 // Simple ULID-like ID generator (in production, use a proper ULID library like 'ulid')
 function generateULID(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 15);
   return (timestamp + random).padEnd(30, "0").substring(0, 30);
+}
+
+// Generate email verification token
+function generateVerificationToken(): string {
+  return crypto.randomBytes(32).toString("hex");
 }
 
 // User Registration RPC
@@ -80,6 +86,9 @@ export const registerUser = defineRpc({
       // Generate ULID
       const userId = generateULID();
 
+      // Generate verification token
+      const verificationToken = generateVerificationToken();
+
       // Create user
       await db.insert(Users).values({
         id: userId,
@@ -87,11 +96,21 @@ export const registerUser = defineRpc({
         username: params.username,
         password: hashedPassword,
         emailVerified: false,
+        emailVerificationToken: verificationToken,
       });
+
+      // Send verification email
+      try {
+        await sendVerificationEmail(params.email, verificationToken);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        // Don't fail registration if email fails, but log it
+      }
 
       return {
         success: true,
-        message: "User registered successfully",
+        message:
+          "User registered successfully. Please check your email to verify your account.",
       };
     } catch (error) {
       console.error("Registration error:", error);

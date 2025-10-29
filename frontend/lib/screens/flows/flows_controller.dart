@@ -315,15 +315,23 @@ class FlowsController extends GetxController {
   // Method to add a new flow
   void addFlow(FlowType type) {
     double y = 20;
-    
+
+    // Set default text based on flow type
+    String defaultValue = "start";
+    if (type == FlowType.process) {
+      defaultValue = "process";
+    } else if (type == FlowType.condition) {
+      defaultValue = "condition";
+    }
+
     FlowClass flow = FlowClass(
       id: flows.length,
-      width: Defaults.flowWidth,
+      width: (type == FlowType.condition) ? 120 : Defaults.flowWidth,
       height: (type == FlowType.condition) ? Defaults.flowWidth : 40,
-      x: stageWidth.value / 2 - Defaults.flowWidth / 2,
+      x: stageWidth.value / 2 - ((type == FlowType.condition) ? 120 : Defaults.flowWidth) / 2,
       y: y,
       type: type,
-      value: "start",
+      value: defaultValue,
       down: Line(),
       left: Line(),
       right: Line(),

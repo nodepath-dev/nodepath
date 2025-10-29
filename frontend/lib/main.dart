@@ -7,6 +7,8 @@ import 'screens/flows/main.dart' as flow_editor;
 import 'services/local_storage_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/globals.dart';
+import 'backend/server.dart';
+import 'services/arri_client.rpc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +61,7 @@ class _HomeState extends State<Home> {
   void initState() {
     super.initState();
     _checkAuthenticationStatus();
+    _handleUrlParams();
   }
 
   Future<void> _checkAuthenticationStatus() async {
@@ -71,6 +74,40 @@ class _HomeState extends State<Home> {
         _userName = userData['userName'];
         _userEmail = userData['userEmail'];
       });
+    }
+  }
+
+  Future<void> _handleUrlParams() async {
+    // Get the current route
+    final uri = Uri.base;
+    final token = uri.queryParameters['token'];
+    if (token != null && token.isNotEmpty) {
+      // Call verify email API
+      try {
+        final response = await server.auth.verifyemail(VerifyEmailParams(token: token));
+        if (response.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verification failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

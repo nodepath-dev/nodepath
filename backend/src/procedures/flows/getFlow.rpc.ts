@@ -1,7 +1,7 @@
 import { a } from "@arrirpc/schema";
 import { defineRpc } from "@arrirpc/server";
-import { getDrizzle } from "../../../../database/postgres";
-import { Flows } from "../../../../database/schema/flows";
+import { getDrizzle } from "@database/postgres";
+import { Flows } from "@database/schema/flows";
 import { eq } from "drizzle-orm";
 
 // Get Flow by ID RPC
@@ -41,7 +41,7 @@ export const getFlow = defineRpc({
         };
       }
 
-      const flowData = flow[0];
+      const flowData = flow[0]!;
 
       return {
         success: true,

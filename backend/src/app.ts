@@ -9,9 +9,7 @@ const app = new ArriApp({
         const origin = event.node.req.headers.origin;
         // Update this list with your frontend origins (exact scheme+host+port)
         const allowedOrigins = [
-            'http://localhost:63600',
-            'http://localhost:50182',
-            'http://192.168.141.133:3000',
+            'http://localhost:51934',
         ];
 
         // If you prefer to allow any origin without credentials, set this to true

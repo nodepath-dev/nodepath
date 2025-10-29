@@ -1,8 +1,8 @@
 import { a } from "@arrirpc/schema";
 import { defineRpc } from "@arrirpc/server";
-import { getDrizzle } from "../../../../database/postgres";
-import { Flows } from "../../../../database/schema/flows";
-import { Users } from "../../../../database/schema/users";
+import { getDrizzle } from "@database/postgres";
+import { Flows } from "@database/schema/flows";
+import { Users } from "@database/schema/users";
 import { eq, desc } from "drizzle-orm";
 
 // Flow List RPC

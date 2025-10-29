@@ -2,16 +2,34 @@
 import sourceMapSupport from "source-map-support";
 
 // ../env.ts
-import { config } from "dotenv";
+import { config } from "@dotenvx/dotenvx";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = dirname(__filename);
 config({ path: join(__dirname, "..", "..", ".env") });
-var DATABASE_URL = process.env["DATABASE_URL"];
-if (!DATABASE_URL) {
-  throw new Error("Missing required environment var DATABASE_URL");
-}
+var Env = class {
+  DATABASE_URL;
+  SMTP_HOST;
+  SMTP_PORT;
+  SMTP_USER;
+  SMTP_PASS;
+  FE_URL;
+  FROM_EMAIL;
+  constructor() {
+    this.DATABASE_URL = process.env["DATABASE_URL"];
+    this.SMTP_HOST = process.env["SMTP_HOST"];
+    this.SMTP_PORT = process.env["SMTP_PORT"];
+    this.SMTP_USER = process.env["SMTP_USER"];
+    this.SMTP_PASS = process.env["SMTP_PASS"];
+    this.FE_URL = process.env["FE_URL"];
+    this.FROM_EMAIL = process.env["FROM_EMAIL"];
+    if (!this.DATABASE_URL) {
+      throw new Error("Missing required environment var DATABASE_URL");
+    }
+  }
+};
+var env = new Env();
 
 // src/app.ts
 import { ArriApp } from "@arrirpc/server";
@@ -19,9 +37,7 @@ var app = new ArriApp({
   onRequest: (event) => {
     const origin = event.node.req.headers.origin;
     const allowedOrigins = [
-      "http://localhost:63600",
-      "http://localhost:50182",
-      "http://192.168.141.133:3000"
+      "http://localhost:51934"
     ];
     const allowAnyOriginWithoutCredentials = false;
     if (allowAnyOriginWithoutCredentials) {
@@ -56,7 +72,7 @@ var client;
 function getDrizzle() {
   if (db) return db;
   if (!client) {
-    client = postgres(DATABASE_URL);
+    client = postgres(env.DATABASE_URL);
   }
   db = drizzle(client);
   return db;
@@ -110,6 +126,7 @@ var Users = pgTable2("users", {
   avatar: text2("avatar"),
   password: varchar3("password", { length: 255 }),
   emailVerified: boolean2("email_verified").default(false),
+  emailVerificationToken: varchar3("email_verification_token", { length: 255 }).unique(),
   lastLoginAt: timestamp3("last_login_at")
 });
 var usersRelations = relations2(Users, ({ many }) => ({
@@ -121,6 +138,7 @@ import { eq } from "drizzle-orm";
 
 // src/procedures/auth/utils.ts
 import { createHash, randomBytes } from "crypto";
+import nodemailer from "nodemailer";
 function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const hash = createHash("sha256").update(password + salt).digest("hex");
@@ -157,6 +175,32 @@ function validatePassword(password) {
     isValid: errors.length === 0,
     errors
   };
+}
+async function sendVerificationEmail(email, token) {
+  const transporter = nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: parseInt(env.SMTP_PORT || "587"),
+    secure: false,
+    // true for 465, false for other ports
+    auth: {
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS
+    }
+  });
+  const verificationUrl = `${env.FE_URL}/?token=${token}`;
+  const mailOptions = {
+    from: `"Node Path" <${env.FROM_EMAIL}>`,
+    // 👈 display name added
+    to: email,
+    subject: "Verify Your Email Address",
+    html: `
+            <h1>Welcome!</h1>
+            <p>Please click the link below to verify your email address:</p>
+            <a href="${verificationUrl}">Verify Email</a>
+            <p>If you didn't create an account, please ignore this email.</p>
+        `
+  };
+  await transporter.sendMail(mailOptions);
 }
 
 // src/procedures/auth/signin.rpc.ts
@@ -203,6 +247,20 @@ var loginUser = defineRpc({
           isNewUser: false
         };
       }
+      if (!user.emailVerified) {
+        try {
+          await sendVerificationEmail(user.email, user.emailVerificationToken || "");
+        } catch (emailError) {
+          console.error("Failed to send verification email:", emailError);
+        }
+        return {
+          success: false,
+          message: "Please verify your email before signing in. A new verification email has been sent.",
+          token: "",
+          userId: "",
+          isNewUser: false
+        };
+      }
       await db2.update(Users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq(Users.id, user.id));
       const token = generateToken(32);
       return {
@@ -230,10 +288,14 @@ var signin_rpc_default = loginUser;
 import { a as a2 } from "@arrirpc/schema";
 import { defineRpc as defineRpc2 } from "@arrirpc/server";
 import { eq as eq2 } from "drizzle-orm";
+import crypto from "crypto";
 function generateULID() {
   const timestamp4 = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 15);
   return (timestamp4 + random).padEnd(30, "0").substring(0, 30);
+}
+function generateVerificationToken() {
+  return crypto.randomBytes(32).toString("hex");
 }
 var registerUser = defineRpc2({
   params: a2.object("RegisterUserParams", {
@@ -258,7 +320,9 @@ var registerUser = defineRpc2({
       if (!passwordValidation.isValid) {
         return {
           success: false,
-          message: `Password validation failed: ${passwordValidation.errors.join(", ")}`
+          message: `Password validation failed: ${passwordValidation.errors.join(
+            ", "
+          )}`
         };
       }
       const existingEmail = await db2.select().from(Users).where(eq2(Users.email, params.email)).limit(1);
@@ -277,16 +341,23 @@ var registerUser = defineRpc2({
       }
       const hashedPassword = hashPassword(params.password);
       const userId = generateULID();
+      const verificationToken = generateVerificationToken();
       await db2.insert(Users).values({
         id: userId,
         email: params.email,
         username: params.username,
         password: hashedPassword,
-        emailVerified: false
+        emailVerified: false,
+        emailVerificationToken: verificationToken
       });
+      try {
+        await sendVerificationEmail(params.email, verificationToken);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+      }
       return {
         success: true,
-        message: "User registered successfully"
+        message: "User registered successfully. Please check your email to verify your account."
       };
     } catch (error) {
       console.error("Registration error:", error);
@@ -299,22 +370,63 @@ var registerUser = defineRpc2({
 });
 var signup_rpc_default = registerUser;
 
-// src/procedures/flows/createFlow.rpc.ts
+// src/procedures/auth/verify-email.rpc.ts
 import { a as a3 } from "@arrirpc/schema";
 import { defineRpc as defineRpc3 } from "@arrirpc/server";
 import { eq as eq3 } from "drizzle-orm";
+var verifyEmail = defineRpc3({
+  params: a3.object("VerifyEmailParams", {
+    token: a3.string()
+  }),
+  response: a3.object("VerifyEmailResponse", {
+    success: a3.boolean(),
+    message: a3.string()
+  }),
+  async handler({ params }) {
+    const db2 = getDrizzle();
+    try {
+      const user = await db2.select().from(Users).where(eq3(Users.emailVerificationToken, params.token)).limit(1);
+      if (user.length === 0) {
+        return {
+          success: false,
+          message: "Invalid or expired verification token"
+        };
+      }
+      await db2.update(Users).set({
+        emailVerified: true,
+        emailVerificationToken: null
+      }).where(eq3(Users.id, user[0].id));
+      return {
+        success: true,
+        message: "Email verified successfully"
+      };
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return {
+        success: false,
+        message: "Email verification failed. Please try again."
+      };
+    }
+  }
+});
+var verify_email_rpc_default = verifyEmail;
+
+// src/procedures/flows/createFlow.rpc.ts
+import { a as a4 } from "@arrirpc/schema";
+import { defineRpc as defineRpc4 } from "@arrirpc/server";
+import { eq as eq4 } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
-var createFlow = defineRpc3({
-  params: a3.object("CreateFlowParams", {
-    userId: a3.string(),
-    flowName: a3.string(),
-    flow: a3.any()
+var createFlow = defineRpc4({
+  params: a4.object("CreateFlowParams", {
+    userId: a4.string(),
+    flowName: a4.string(),
+    flow: a4.any()
     // JSON flow data
   }),
-  response: a3.object("CreateFlowResponse", {
-    success: a3.boolean(),
-    message: a3.string(),
-    flowId: a3.optional(a3.string())
+  response: a4.object("CreateFlowResponse", {
+    success: a4.boolean(),
+    message: a4.string(),
+    flowId: a4.optional(a4.string())
   }),
   async handler({ params }) {
     const db2 = getDrizzle();
@@ -331,7 +443,7 @@ var createFlow = defineRpc3({
           message: "Flow name must be 255 characters or less"
         };
       }
-      const existingUser = await db2.select().from(Users).where(eq3(Users.id, params.userId)).limit(1);
+      const existingUser = await db2.select().from(Users).where(eq4(Users.id, params.userId)).limit(1);
       if (existingUser.length === 0) {
         return {
           success: false,
@@ -370,19 +482,19 @@ var createFlow = defineRpc3({
 var createFlow_rpc_default = createFlow;
 
 // src/procedures/flows/getFlow.rpc.ts
-import { a as a4 } from "@arrirpc/schema";
-import { defineRpc as defineRpc4 } from "@arrirpc/server";
-import { eq as eq4 } from "drizzle-orm";
-var getFlow = defineRpc4({
-  params: a4.object("GetFlowParams", {
-    flowId: a4.string()
+import { a as a5 } from "@arrirpc/schema";
+import { defineRpc as defineRpc5 } from "@arrirpc/server";
+import { eq as eq5 } from "drizzle-orm";
+var getFlow = defineRpc5({
+  params: a5.object("GetFlowParams", {
+    flowId: a5.string()
   }),
-  response: a4.object("GetFlowResponse", {
-    success: a4.boolean(),
-    message: a4.string(),
-    flow: a4.optional(a4.any()),
+  response: a5.object("GetFlowResponse", {
+    success: a5.boolean(),
+    message: a5.string(),
+    flow: a5.optional(a5.any()),
     // JSON flow data
-    flowName: a4.optional(a4.string())
+    flowName: a5.optional(a5.string())
   }),
   async handler({ params }) {
     const db2 = getDrizzle();
@@ -393,7 +505,7 @@ var getFlow = defineRpc4({
           message: "Missing required field: flowId is required"
         };
       }
-      const flow = await db2.select().from(Flows).where(eq4(Flows.id, params.flowId)).limit(1);
+      const flow = await db2.select().from(Flows).where(eq5(Flows.id, params.flowId)).limit(1);
       if (flow.length === 0) {
         return {
           success: false,
@@ -419,22 +531,24 @@ var getFlow = defineRpc4({
 var getFlow_rpc_default = getFlow;
 
 // src/procedures/flows/listFlows.rpc.ts
-import { a as a5 } from "@arrirpc/schema";
-import { defineRpc as defineRpc5 } from "@arrirpc/server";
-import { eq as eq5, desc } from "drizzle-orm";
-var listFlows = defineRpc5({
-  params: a5.object("ListFlowsParams", {
-    userId: a5.string()
+import { a as a6 } from "@arrirpc/schema";
+import { defineRpc as defineRpc6 } from "@arrirpc/server";
+import { eq as eq6, desc } from "drizzle-orm";
+var listFlows = defineRpc6({
+  params: a6.object("ListFlowsParams", {
+    userId: a6.string()
   }),
-  response: a5.object("ListFlowsResponse", {
-    success: a5.boolean(),
-    message: a5.string(),
-    flows: a5.array(a5.object("FlowItem", {
-      id: a5.string(),
-      flowName: a5.string(),
-      createdAt: a5.string(),
-      updatedAt: a5.string()
-    }))
+  response: a6.object("ListFlowsResponse", {
+    success: a6.boolean(),
+    message: a6.string(),
+    flows: a6.array(
+      a6.object("FlowItem", {
+        id: a6.string(),
+        flowName: a6.string(),
+        createdAt: a6.string(),
+        updatedAt: a6.string()
+      })
+    )
   }),
   async handler({ params }) {
     const db2 = getDrizzle();
@@ -446,7 +560,7 @@ var listFlows = defineRpc5({
           flows: []
         };
       }
-      const existingUser = await db2.select().from(Users).where(eq5(Users.id, params.userId)).limit(1);
+      const existingUser = await db2.select().from(Users).where(eq6(Users.id, params.userId)).limit(1);
       if (existingUser.length === 0) {
         return {
           success: false,
@@ -459,7 +573,7 @@ var listFlows = defineRpc5({
         flowName: Flows.flowName,
         createdAt: Flows.createdAt,
         updatedAt: Flows.updatedAt
-      }).from(Flows).where(eq5(Flows.userId, params.userId)).orderBy(desc(Flows.updatedAt));
+      }).from(Flows).where(eq6(Flows.userId, params.userId)).orderBy(desc(Flows.updatedAt));
       return {
         success: true,
         message: "Flows retrieved successfully",
@@ -483,19 +597,19 @@ var listFlows = defineRpc5({
 var listFlows_rpc_default = listFlows;
 
 // src/procedures/flows/updateFlow.rpc.ts
-import { a as a6 } from "@arrirpc/schema";
-import { defineRpc as defineRpc6 } from "@arrirpc/server";
-import { eq as eq6 } from "drizzle-orm";
-var updateFlow = defineRpc6({
-  params: a6.object("UpdateFlowParams", {
-    flowId: a6.string(),
-    flow: a6.any()
+import { a as a7 } from "@arrirpc/schema";
+import { defineRpc as defineRpc7 } from "@arrirpc/server";
+import { eq as eq7 } from "drizzle-orm";
+var updateFlow = defineRpc7({
+  params: a7.object("UpdateFlowParams", {
+    flowId: a7.string(),
+    flow: a7.any()
     // JSON flow data
   }),
-  response: a6.object("UpdateFlowResponse", {
-    success: a6.boolean(),
-    message: a6.string(),
-    flowId: a6.optional(a6.string())
+  response: a7.object("UpdateFlowResponse", {
+    success: a7.boolean(),
+    message: a7.string(),
+    flowId: a7.optional(a7.string())
   }),
   async handler({ params }) {
     const db2 = getDrizzle();
@@ -512,7 +626,7 @@ var updateFlow = defineRpc6({
           message: "Flow data is required"
         };
       }
-      const existingFlow = await db2.select().from(Flows).where(eq6(Flows.id, params.flowId)).limit(1);
+      const existingFlow = await db2.select().from(Flows).where(eq7(Flows.id, params.flowId)).limit(1);
       if (existingFlow.length === 0) {
         return {
           success: false,
@@ -522,7 +636,7 @@ var updateFlow = defineRpc6({
       const updateData = {
         flow: params.flow
       };
-      await db2.update(Flows).set(updateData).where(eq6(Flows.id, params.flowId));
+      await db2.update(Flows).set(updateData).where(eq7(Flows.id, params.flowId));
       return {
         success: true,
         message: "Flow updated successfully",
@@ -551,6 +665,7 @@ var updateFlow_rpc_default = updateFlow;
 sourceMapSupport.install();
 app_default.rpc("auth.signin", signin_rpc_default);
 app_default.rpc("auth.signup", signup_rpc_default);
+app_default.rpc("auth.verifyemail", verify_email_rpc_default);
 app_default.rpc("flows.createFlow", createFlow_rpc_default);
 app_default.rpc("flows.getFlow", getFlow_rpc_default);
 app_default.rpc("flows.listFlows", listFlows_rpc_default);

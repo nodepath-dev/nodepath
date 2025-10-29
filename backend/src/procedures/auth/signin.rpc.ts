@@ -3,7 +3,7 @@ import { defineRpc } from "@arrirpc/server";
 import { getDrizzle } from "@database/postgres";
 import { Users } from "@database/schema/users";
 import { eq } from "drizzle-orm";
-import { verifyPassword, generateToken } from "./utils";
+import { verifyPassword, generateToken, sendVerificationEmail } from "./utils";
 
 // User Login/Signin RPC
 export const loginUser = defineRpc({
@@ -57,6 +57,24 @@ export const loginUser = defineRpc({
         return {
           success: false,
           message: "Invalid email or password",
+          token: "",
+          userId: "",
+          isNewUser: false,
+        };
+      }
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        // Send verification email again
+        try {
+          await sendVerificationEmail(user.email, user.emailVerificationToken || "");
+        } catch (emailError) {
+          console.error("Failed to send verification email:", emailError);
+        }
+
+        return {
+          success: false,
+          message: "Please verify your email before signing in. A new verification email has been sent.",
           token: "",
           userId: "",
           isNewUser: false,

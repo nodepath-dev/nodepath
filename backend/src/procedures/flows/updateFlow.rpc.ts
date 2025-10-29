@@ -1,7 +1,7 @@
 import { a } from "@arrirpc/schema";
 import { defineRpc } from "@arrirpc/server";
-import { getDrizzle } from "../../../../database/postgres";
-import { Flows } from "../../../../database/schema/flows";
+import { getDrizzle } from "@database/postgres";
+import { Flows } from "@database/schema/flows";
 import { eq } from "drizzle-orm";
 
 // Flow Update RPC

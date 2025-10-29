@@ -352,6 +352,54 @@ class _EditFlowState extends State<EditFlow> {
                   ],
                 ),
               ),
+            // Toggle yes direction for condition flows with two children
+            if (selectedFlow.type == FlowType.condition)
+              Obx(() {
+                final childDirections = <Direction>[];
+                for (var flow in controller.flows) {
+                  if (flow.pid == selectedFlow.id) {
+                    if (flow.direction != null) {
+                      childDirections.add(flow.direction!);
+                    }
+                  }
+                }
+                // Only show toggle if exactly two children with different directions
+                if (childDirections.length == 2 && childDirections[0] != childDirections[1]) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 10),
+                    child: InkWell(
+                      onTap: () {
+                        // Toggle between the two directions
+                        final currentYes = selectedFlow.yes;
+                        final newYes = currentYes == childDirections[0] ? childDirections[1] : childDirections[0];
+                        selectedFlow.yes = newYes;
+                        controller.updateFlowsReactive();
+                        controller.save();
+                        // Force canvas repaint
+                        controller.flowCanvasRefreshCounter.value++;
+                        // Force UI update
+                        setState(() {});
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Pallet.inside1,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("yes: ${selectedFlow.yes?.name ?? 'none'}", style: TextStyle(fontSize: 12)),
+                            SizedBox(width: 10),
+                            Icon(Icons.swap_horiz, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return SizedBox.shrink();
+              }),
             InkWell(
               onTap: () {
                 // Use existing delete to remove loop when in loop selection mode with both endpoints chosen
@@ -387,6 +435,33 @@ class _EditFlowState extends State<EditFlow> {
                 ),
               ),
             ),
+            // Check if selected flow is linked to any loops
+            if (controller.loopLinks.any((link) => link.fromId == selectedFlow.id || link.toId == selectedFlow.id))
+              Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: InkWell(
+                  onTap: () {
+                    controller.deleteAllLoopsForFlow(selectedFlow.id);
+                    controller.window.value = "none";
+                    controller.refresh();
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Pallet.inside1,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("delete loops", style: TextStyle(fontSize: 12)),
+                        SizedBox(width: 10),
+                        Icon(Icons.delete, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             SizedBox(height: 15),
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
