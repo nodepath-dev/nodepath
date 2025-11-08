@@ -547,8 +547,11 @@ class LinePainter2 extends CustomPainter {
 
     for (var flow in controller.flows) {
       if (!(flow.type == FlowType.condition && flow.left.hasChild && flow.right.hasChild)) {
-        start = Offset(flow.x + flow.width / 2, flow.y + flow.height);
-        end = Offset(flow.x + flow.width / 2, flow.y + flow.height + flow.down.lineHeight);
+        // For condition flows, use width for both dimensions since diamond is square
+        final flowHeight = (flow.type == FlowType.condition) ? flow.width : flow.height;
+        
+        start = Offset(flow.x + flow.width / 2, flow.y + flowHeight);
+        end = Offset(flow.x + flow.width / 2, flow.y + flowHeight + flow.down.lineHeight);
         
         // Check if this line is being dragged
         bool isHighlighted = controller.isDraggingLineHeight.value && 
@@ -571,13 +574,17 @@ class LinePainter2 extends CustomPainter {
       }
 
       if (flow.type == FlowType.condition) {
+        // For condition flows, use width for both dimensions since diamond is square
+        final conditionSize = flow.width;
+        final conditionCenterY = flow.y + conditionSize / 2;
+        
         // right
         // Hide add handles if this node participates in any loop (as from or to)
         bool hasLoopWithThis = controller.loopLinks.any((l) => l.toId == flow.id || l.fromId == flow.id);
 
         if (!hasLoopWithThis && flow.direction != Direction.left && !(flow.down.hasChild && flow.left.hasChild)) {
-          start = Offset(flow.x + flow.width, flow.y + flow.height / 2);
-          end = Offset(flow.x + flow.width + flow.right.lineHeight, flow.y + flow.height / 2);
+          start = Offset(flow.x + conditionSize, conditionCenterY);
+          end = Offset(flow.x + conditionSize + flow.right.lineHeight, conditionCenterY);
           
           // Check if this line is being dragged
           bool isHighlighted = controller.isDraggingLineHeight.value && 
@@ -603,8 +610,8 @@ class LinePainter2 extends CustomPainter {
 
         // left
         if (!hasLoopWithThis && flow.direction != Direction.right && !(flow.down.hasChild && flow.right.hasChild)) {
-          start = Offset(flow.x, flow.y + flow.height / 2);
-          end = Offset(flow.x - flow.left.lineHeight, flow.y + flow.height / 2);
+          start = Offset(flow.x, conditionCenterY);
+          end = Offset(flow.x - flow.left.lineHeight, conditionCenterY);
           
           // Check if this line is being dragged
           bool isHighlighted = controller.isDraggingLineHeight.value && 
@@ -627,15 +634,15 @@ class LinePainter2 extends CustomPainter {
           }
           
         }
-        Offset down = Offset((flow.x + flow.width / 2) + 20, (flow.y + flow.height + flow.down.lineHeight / 2) - 10);
-        Offset left = Offset((flow.x - flow.left.lineHeight / 2) - 2, (flow.y + flow.height / 2) - 20);
-        Offset right = Offset((flow.x + flow.width + flow.right.lineHeight / 2) - 10, (flow.y + flow.height / 2) - 20);
+        Offset down = Offset((flow.x + conditionSize / 2) + 20, (flow.y + conditionSize + flow.down.lineHeight / 2) - 10);
+        Offset left = Offset((flow.x - flow.left.lineHeight / 2) - 2, conditionCenterY - 20);
+        Offset right = Offset((flow.x + conditionSize + flow.right.lineHeight / 2) - 10, conditionCenterY - 20);
         // yes
         if (flow.yes == Direction.down) {
           paintText('yes', down, true);
           // right
           if (flow.right.hasChild) {
-            start = Offset((flow.x + flow.width + flow.right.lineHeight / 2) - 10, (flow.y + flow.height / 2) - 20);
+            start = Offset((flow.x + conditionSize + flow.right.lineHeight / 2) - 10, conditionCenterY - 20);
             paintText('no', right, false);
           }
           // left
@@ -772,15 +779,19 @@ class LinePainter2 extends CustomPainter {
       
       Offset edgePointVertical(FlowClass f, double targetY) {
         final cx = f.x + f.width / 2;
-        if (targetY < f.y + f.height / 2) {
+        // For condition flows, use width for both dimensions since diamond is square
+        final fHeight = (f.type == FlowType.condition) ? f.width : f.height;
+        if (targetY < f.y + fHeight / 2) {
           return Offset(cx, f.y); // from top edge
         } else {
-          return Offset(cx, f.y + f.height); // from bottom edge
+          return Offset(cx, f.y + fHeight); // from bottom edge
         }
       }
       
       Offset edgePointHorizontal(FlowClass f, double targetX) {
-        final cy = f.y + f.height / 2;
+        // For condition flows, use width for both dimensions since diamond is square
+        final fHeight = (f.type == FlowType.condition) ? f.width : f.height;
+        final cy = f.y + fHeight / 2;
         if (targetX < f.x + f.width / 2) {
           return Offset(f.x, cy); // from left edge
         } else {

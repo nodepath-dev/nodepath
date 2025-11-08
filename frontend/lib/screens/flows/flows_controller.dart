@@ -718,7 +718,9 @@ class FlowsController extends GetxController {
     for (var flow in flowsList) {
       if (flow.pid == id && flow.direction == Direction.down) {
         // Position the flow so its top edge is just below the line
-        flow.y = flowsList[id].y + flowsList[id].height + flowsList[id].down.lineHeight;
+        // For condition flows, use width for both dimensions since diamond is square
+        final parentHeight = (flowsList[id].type == FlowType.condition) ? flowsList[id].width : flowsList[id].height;
+        flow.y = flowsList[id].y + parentHeight + flowsList[id].down.lineHeight;
         flow.x = x - flow.width / 2;
         // Handle side lines for both condition and process flows
         sideLines(flowsList, flow.id);
@@ -729,11 +731,14 @@ class FlowsController extends GetxController {
   
   // Method to calculate side lines
   void sideLines(List<FlowClass> flowsList, int id) {
+    // For condition flows, use width for both dimensions since diamond is square
+    final parentHeight = (flowsList[id].type == FlowType.condition) ? flowsList[id].width : flowsList[id].height;
+    
     // Left
     for (var flow in flowsList) {
       if (flow.pid == id && flow.direction == Direction.left) {
         // Position the flow so its right edge is just after the line
-        flow.y = flowsList[id].y + flowsList[id].height / 2 - flow.height / 2;
+        flow.y = flowsList[id].y + parentHeight / 2 - flow.height / 2;
         flow.x = flowsList[id].x - flowsList[id].left.lineHeight - flow.width;
         // Handle side lines for both condition and process flows
         sideLines(flowsList, flow.id);
@@ -745,7 +750,7 @@ class FlowsController extends GetxController {
     for (var flow in flowsList) {
       if (flow.pid == id && flow.direction == Direction.right) {
         // Position the flow so its left edge is just after the line
-        flow.y = flowsList[id].y + flowsList[id].height / 2 - flow.height / 2;
+        flow.y = flowsList[id].y + parentHeight / 2 - flow.height / 2;
         flow.x = flowsList[id].x + flowsList[id].right.lineHeight + flowsList[id].width;
         // Handle side lines for both condition and process flows
         sideLines(flowsList, flow.id);
@@ -759,7 +764,9 @@ class FlowsController extends GetxController {
     for (var flow in flows) {
       if (flow.pid == id && flow.direction == Direction.down) {
         // Position the flow so its top edge is just below the line
-        flow.y = flows[id].y + flows[id].height + flows[id].down.lineHeight;
+        // For condition flows, use width for both dimensions since diamond is square
+        final parentHeight = (flows[id].type == FlowType.condition) ? flows[id].width : flows[id].height;
+        flow.y = flows[id].y + parentHeight + flows[id].down.lineHeight;
         flow.x = x - flow.width / 2;
         // Handle side lines for both condition and process flows
         sideLinesReactive(flow.id);
@@ -770,11 +777,14 @@ class FlowsController extends GetxController {
   
   // Reactive version of sideLines for updating the actual flows list
   void sideLinesReactive(int id) {
+    // For condition flows, use width for both dimensions since diamond is square
+    final parentHeight = (flows[id].type == FlowType.condition) ? flows[id].width : flows[id].height;
+    
     // Left
     for (var flow in flows) {
       if (flow.pid == id && flow.direction == Direction.left) {
         // Position the flow so its right edge is just after the line
-        flow.y = flows[id].y + flows[id].height / 2 - flow.height / 2;
+        flow.y = flows[id].y + parentHeight / 2 - flow.height / 2;
         flow.x = flows[id].x - flows[id].left.lineHeight - flow.width;
         // Handle side lines for both condition and process flows
         sideLinesReactive(flow.id);
@@ -786,7 +796,7 @@ class FlowsController extends GetxController {
     for (var flow in flows) {
       if (flow.pid == id && flow.direction == Direction.right) {
         // Position the flow so its left edge is just after the line
-        flow.y = flows[id].y + flows[id].height / 2 - flow.height / 2;
+        flow.y = flows[id].y + parentHeight / 2 - flow.height / 2;
         flow.x = flows[id].x + flows[id].right.lineHeight + flows[id].width;
         // Handle side lines for both condition and process flows
         sideLinesReactive(flow.id);
